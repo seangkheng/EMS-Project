@@ -8,3 +8,6 @@ openpyxl==3.1.2
 WeasyPrint==59.0
 pydyf==0.6.0
 gunicorn
+setuptools
+wheel
+build
