@@ -1,0 +1,10 @@
+Flask==3.0.3
+Flask-Cors==4.0.1
+Flask-Bcrypt==1.0.1
+PyJWT==2.8.0
+python-dotenv==1.0.1
+pandas==2.2.2
+openpyxl==3.1.2
+WeasyPrint==59.0
+pydyf==0.6.0
+gunicorn

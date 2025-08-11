@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <title>YATAI School - សាលាយ៉ាតៃ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&family=Kantumruy+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <!-- Corrected path to style.css inside the static folder -->
+    <link rel="stylesheet" href="/static/style.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Notification Bar -->
+    <div id="notification-bar"></div>
+
+    <!-- Authentication Section -->
+    <div id="auth-section">
+        <div id="login-form-container">
+            <!-- Logo added to the Login Form Header -->
+            <div style="text-align: center; margin-bottom: 24px;">
+                <img src="/static/images/logo.png" alt="YATAI School Logo" style="height: 80px; width: auto;">
+            </div>
+            <h2>Login to YATAI SCHOOL</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-username">Username:</label>
+                    <input type="text" id="login-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password:</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn btn-submit">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application Section (Restored) -->
+    <div id="main-app-section" style="display:none;">
+        <header class="header">
+            <div class="header-brand">
+                <img src="/static/images/logo.png" alt="YATAI School Logo" class="header-logo">
+            </div>
+            <div class="header-controls">
+                <span id="username-display"></span>
+                <div class="lang-switch">
+                    <button data-lang="km">ខ្មែរ</button>
+                    <button data-lang="en">English</button>
+                    <button data-lang="jp">日本語</button>
+                </div>
+                <button id="logout-button" class="btn"><i class="fa-solid fa-right-from-bracket"></i> <span data-i18n="logout"></span></button>
+            </div>
+        </header>
+        <main class="container">
+            <ul id="modules-list" class="modules">
+                <li class="module-card" data-module="dashboard"><i class="fa-solid fa-chart-line"></i><span class="module-title" data-i18n="module_dashboard"></span></li>
+                <li class="module-card" data-module="announcements"><i class="fa-solid fa-bullhorn"></i><span class="module-title" data-i18n="module_announcements"></span></li>
+                <li class="module-card" data-module="student"><i class="fa-solid fa-user-graduate"></i><span class="module-title" data-i18n="module_student"></span></li>
+                <li class="module-card" data-module="hr"><i class="fa-solid fa-chalkboard-user"></i><span class="module-title" data-i18n="module_hr"></span></li>
+                <li class="module-card" data-module="academic"><i class="fa-solid fa-book"></i><span class="module-title" data-i18n="module_academic"></span></li>
+                <li class="module-card" data-module="attendance"><i class="fa-solid fa-user-check"></i><span class="module-title" data-i18n="module_attendance"></span></li>
+                <li class="module-card" data-module="gradebook"><i class="fa-solid fa-marker"></i><span class="module-title" data-i18n="module_gradebook"></span></li>
+                <li class="module-card" data-module="timetable"><i class="fa-solid fa-calendar-days"></i><span class="module-title" data-i18n="module_timetable"></span></li>
+                <li class="module-card" data-module="subjects" data-role="admin"><i class="fa-solid fa-layer-group"></i><span class="module-title" data-i18n="module_subjects"></span></li>
+                <li class="module-card" data-module="users" data-role="admin"><i class="fa-solid fa-users-gear"></i><span class="module-title" data-i18n="module_users"></span></li>
+            </ul>
+            <div id="content">
+                <!-- Dynamic content will be rendered here -->
+            </div>
+        </main>
+        <footer>
+            <div class="footer-container">
+                <div class="footer-contact">
+                    <h4>Contact Information</h4>
+                    <p><strong>អាសយដ្ឋាន:</strong> ផ្លូវទន្លេសាប ភូមិ១ សង្កាត់ជ្រោយចង្វារ ខណ្ឌជ្រោយចង្វារ​ ភ្នំពេញ</p>
+                    <p><strong>ទូរស័ព្ទ:</strong> <a href="tel:0884134546">088 413 4546</a></p>
+                    <p><strong>អ៊ីមែល:</strong> <a href="mailto:yataishcoolkh@gmail.com">yataishcoolkh@gmail.com</a></p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Corrected path to app.js inside the static folder -->
+    <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
