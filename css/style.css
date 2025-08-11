@@ -1,3 +1,22 @@
+
+@font-face {
+    font-family: 'CustomKhmer';
+    src: url('../fonts/840fe077-7e93-4b3d-a743-db81b08969e7.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'CustomJapanese';
+    src: url('../fonts/6b40fcd4-7535-473e-9c05-981844cd1ab1.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+body {
+    font-family: 'CustomKhmer', 'CustomJapanese', sans-serif;
+}
+
 /* =========================
    YATAI School - EMS Styles (Revised for Better UI/UX)
    ========================= */
