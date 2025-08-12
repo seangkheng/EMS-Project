@@ -1777,4 +1777,4 @@ def delete_announcement(announcement_id, **kwargs):
 # --- Run Application ---
 if __name__ == '__main__':
     setup_database_and_admin()
-    app.run(host='0.0.0.0', port=3000, debug=Fal
+    app.run(host='0.0.0.0', port=3000, debug=Fal)
