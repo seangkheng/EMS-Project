@@ -30,8 +30,6 @@ CORS(app)
 bcrypt = Bcrypt(app)
 
 # --- Configuration for Render Deployment ---
-# On Render, a persistent disk is mounted at '/var/data'.
-# We'll store the database and uploads there to prevent data loss on deploys.
 IS_ON_RENDER = os.environ.get('RENDER', False)
 DATA_DIR = '/var/data' if IS_ON_RENDER else os.path.dirname(os.path.abspath(__file__))
 
@@ -52,7 +50,6 @@ if not os.path.exists(UPLOAD_FOLDER):
     print(f"--- INFO: Created uploads directory at {UPLOAD_FOLDER} ---")
 
 if not os.path.exists(FONT_FOLDER):
-    # This should ideally be part of your git repo, but we create it just in case.
     os.makedirs(FONT_FOLDER)
     print(f"--- WARNING: Fonts directory not found at {FONT_FOLDER}. PDF exports might fail. ---")
 
@@ -175,6 +172,12 @@ def setup_database_and_admin():
     conn.close()
     print(f"--- INFO: Setup complete. You can log in with Username: admin, Password: {default_password} ---")
 
+# --- START: ការ​កែប្រែ​សំខាន់ ---
+# ហៅ​មុខងារ​រៀបចំ​មូលដ្ឋាន​ទិន្នន័យ​នៅ​ពេល​កម្មវិធី​ចាប់ផ្ដើម
+# នេះ​នឹង​ធានា​ថា​តារាង​ទិន្នន័យ​ត្រូវ​បាន​បង្កើត​នៅ​លើ Render
+setup_database_and_admin()
+# --- END: ការ​កែប្រែ​សំខាន់ ---
+
 
 def get_token_data():
     token = None
@@ -216,8 +219,6 @@ def uploaded_file(filename):
 
 @app.route('/<path:path>')
 def serve_static_or_index(path):
-    # This will handle static files like CSS, JS, and images from the 'static' folder
-    # as well as routing for the single-page application.
     if not os.path.splitext(path)[1] and path != 'favicon.ico':
         return send_from_directory('.', 'index.html')
     return send_from_directory('.', path)
@@ -1776,5 +1777,7 @@ def delete_announcement(announcement_id, **kwargs):
 
 # --- Run Application ---
 if __name__ == '__main__':
+    # The setup function is called globally, so it's not strictly needed here for local dev,
+    # but keeping it doesn't cause any harm.
     setup_database_and_admin()
-    app.run(host='0.0.0.0', port=3000, debug=Fal)
+    app.run(host='0.0.0.0', port=3000, debug=False)
