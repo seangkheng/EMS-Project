@@ -1,13 +1,15 @@
-# app.py (Final Corrected Version with All Features)
+# app.py (Final Corrected Version with All Features & PDF Image Fix for Render)
 
 import os
 import time
 import sqlite3
 import io
 import pandas as pd
-import calendar # Import the calendar module
-import traceback # Import for detailed error logging
-import math # Import math for ceiling function
+import calendar
+import traceback
+import math
+import base64 # Import for image encoding
+import mimetypes # Import for getting image type
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
@@ -27,18 +29,33 @@ app = Flask(__name__, static_folder='static', static_url_path='/static')
 CORS(app)
 bcrypt = Bcrypt(app)
 
-DATABASE_FILE = 'ems_database.db'
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_default_secret_key_if_not_set')
+# --- Configuration for Render Deployment ---
+# On Render, a persistent disk is mounted at '/var/data'.
+# We'll store the database and uploads there to prevent data loss on deploys.
+IS_ON_RENDER = os.environ.get('RENDER', False)
+DATA_DIR = '/var/data' if IS_ON_RENDER else os.path.dirname(os.path.abspath(__file__))
+
+DATABASE_FILE = os.path.join(DATA_DIR, 'ems_database.db')
+UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads')
+
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_default_secret_key_if_not_set_for_dev')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = 'uploads'
 FONT_FOLDER = os.path.join(BASE_DIR, 'fonts')
 KHMER_TTF = os.path.join(FONT_FOLDER, 'KhmerOS.ttf')
-JAPANESE_TTF = os.path.join(FONT_FOLDER, 'NotoSansJP-Regular.ttf') # Path to Japanese font
+JAPANESE_TTF = os.path.join(FONT_FOLDER, 'NotoSansJP-Regular.ttf')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
-if not os.path.exists(FONT_FOLDER): os.makedirs(FONT_FOLDER)
+# Create necessary directories if they don't exist
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+    print(f"--- INFO: Created uploads directory at {UPLOAD_FOLDER} ---")
+
+if not os.path.exists(FONT_FOLDER):
+    # This should ideally be part of your git repo, but we create it just in case.
+    os.makedirs(FONT_FOLDER)
+    print(f"--- WARNING: Fonts directory not found at {FONT_FOLDER}. PDF exports might fail. ---")
+
 
 # --- Database Helper Function ---
 def get_db_connection():
@@ -49,6 +66,7 @@ def get_db_connection():
 # --- INITIAL DATABASE AND ADMIN SETUP ---
 def setup_database_and_admin():
     print("--- INFO: Checking database and setting up default admin... ---")
+    print(f"--- INFO: Database file path: {DATABASE_FILE} ---")
     conn = get_db_connection()
     cursor = conn.cursor()
     sql_commands = [
@@ -191,8 +209,15 @@ def admin_required(f):
 def serve_index():
     return send_from_directory('.', 'index.html')
 
+# --- Route to serve uploaded files from the persistent disk ---
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 @app.route('/<path:path>')
 def serve_static_or_index(path):
+    # This will handle static files like CSS, JS, and images from the 'static' folder
+    # as well as routing for the single-page application.
     if not os.path.splitext(path)[1] and path != 'favicon.ico':
         return send_from_directory('.', 'index.html')
     return send_from_directory('.', path)
@@ -1313,6 +1338,23 @@ def get_student_report_card(student_id, **kwargs):
 
 
 # --- Export API Routes ---
+
+# NEW HELPER FUNCTION FOR PDF IMAGE EMBEDDING
+def image_to_base64_data_uri(filepath):
+    """Reads an image file and converts it to a base64 data URI."""
+    if not filepath or not os.path.exists(filepath):
+        return None
+    try:
+        mime_type, _ = mimetypes.guess_type(filepath)
+        if not mime_type or not mime_type.startswith('image'):
+            return None
+        with open(filepath, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+        return f"data:{mime_type};base64,{encoded_string}"
+    except Exception as e:
+        print(f"Error converting image to base64: {e}")
+        return None
+
 @app.route('/api/students/export/excel')
 @token_required
 def export_students_excel(**kwargs):
@@ -1401,8 +1443,14 @@ def export_students_pdf(**kwargs):
 
         table_rows_html = ""
         for r in students:
-            photo_path = os.path.join(BASE_DIR, UPLOAD_FOLDER, r['photo_filename']) if r['photo_filename'] else None
-            img_tag = f"<img src='file://{photo_path}'>" if photo_path and os.path.exists(photo_path) else "<div class='img-placeholder'></div>"
+            # --- START: PDF IMAGE FIX ---
+            img_tag = "<div class='img-placeholder'></div>"
+            if r['photo_filename']:
+                photo_path = os.path.join(app.config['UPLOAD_FOLDER'], r['photo_filename'])
+                data_uri = image_to_base64_data_uri(photo_path)
+                if data_uri:
+                    img_tag = f"<img src='{data_uri}'>"
+            # --- END: PDF IMAGE FIX ---
             
             name_html = f"""
                 <div class='name-km'>{r['name_km'] or ''}</div>
@@ -1420,8 +1468,11 @@ def export_students_pdf(**kwargs):
                 </tr>
             """
         
+        # --- START: PDF LOGO FIX ---
         logo_path = os.path.join(BASE_DIR, 'static', 'images', 'logo.png')
-        logo_tag = f"<img src='file://{logo_path}' class='header-logo'>" if os.path.exists(logo_path) else ""
+        logo_data_uri = image_to_base64_data_uri(logo_path)
+        logo_tag = f"<img src='{logo_data_uri}' class='header-logo'>" if logo_data_uri else ""
+        # --- END: PDF LOGO FIX ---
 
         css_string = """
         @font-face {{
@@ -1618,7 +1669,8 @@ def export_timetable_pdf(**kwargs):
             table_body += "</tr>"
 
         logo_path = os.path.join(BASE_DIR, 'static', 'images', 'logo.png')
-        logo_tag = f"<img src='file://{logo_path}' class='header-logo'>" if os.path.exists(logo_path) else ""
+        logo_data_uri = image_to_base64_data_uri(logo_path)
+        logo_tag = f"<img src='{logo_data_uri}' class='header-logo'>" if logo_data_uri else ""
         
         css_string = """
         @font-face {{ font-family: 'KhmerApp'; src: url('file://{KHMER_TTF}'); }}
@@ -1725,4 +1777,4 @@ def delete_announcement(announcement_id, **kwargs):
 # --- Run Application ---
 if __name__ == '__main__':
     setup_database_and_admin()
-    app.run(host='0.0.0.0', port=3000, debug=False)
+    app.run(host='0.0.0.0', port=3000, debug=Fal

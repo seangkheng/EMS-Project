@@ -1,22 +1,3 @@
-
-@font-face {
-    font-family: 'CustomKhmer';
-    src: url('../fonts/840fe077-7e93-4b3d-a743-db81b08969e7.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'CustomJapanese';
-    src: url('../fonts/6b40fcd4-7535-473e-9c05-981844cd1ab1.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-}
-
-body {
-    font-family: 'CustomKhmer', 'CustomJapanese', sans-serif;
-}
-
 /* =========================
    YATAI School - EMS Styles (Revised for Better UI/UX)
    ========================= */
@@ -393,24 +374,85 @@ tbody tr:last-child td {
   color: var(--muted);
   font-weight: 500;
 }
+.dashboard-main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+.dashboard-announcements {
+    grid-column: 1 / -1; /* Span full width on small screens */
+}
+@media (min-width: 1024px) {
+    .dashboard-main-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .dashboard-announcements {
+        grid-column: span 1 / span 1;
+    }
+    .charts-grid {
+        grid-column: span 2 / span 2;
+    }
+}
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 24px;
-  margin-top: 24px;
 }
-.charts-grid .card {
+.card {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 24px;
   box-shadow: var(--shadow);
+}
+.card h3 {
+    margin: 0 0 16px 0;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 12px;
+}
+.charts-grid .card {
   height: 350px;
 }
 .charts-grid canvas {
   width: 100% !important;
   height: 100% !important;
 }
+
+/* --- NEW: Dashboard Announcement List --- */
+.announcement-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.announcement-item {
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+}
+.announcement-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+.announcement-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+.announcement-item-header strong {
+    font-weight: 600;
+}
+.announcement-item-meta {
+    font-size: 0.8em;
+    color: var(--muted);
+}
+.announcement-item-content {
+    margin: 0;
+    font-size: 0.9em;
+    color: var(--muted);
+}
+
 
 /* Notification Bar */
 #notification-bar {
@@ -702,4 +744,5 @@ footer {
     .modules { grid-template-columns: 1fr; }
     .dashboard-stats { grid-template-columns: 1fr; }
     .charts-grid { grid-template-columns: 1fr; }
+    .dashboard-main-grid { grid-template-columns: 1fr; }
 }
