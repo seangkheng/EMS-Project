@@ -1,7 +1,10 @@
+# Libraries WeasyPrint needs
 libpango-1.0-0
 libpangoft2-1.0-0
 libcairo2
 libgdk-pixbuf2.0-0
+fontconfig
+
+# Fonts for Khmer & Japanese
 fonts-noto
 fonts-noto-cjk
-fontconfig
