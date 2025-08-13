@@ -1487,7 +1487,6 @@ def export_timetable_pdf(**kwargs):
             table_body=table_body
         )
 
-        font_config = FontConfiguration()
         css_string = f"""
         @font-face {{ font-family: 'KhmerApp'; src: url(file://{KHMER_TTF}); }}
         @font-face {{ font-family: 'JapaneseApp'; src: url(file://{JAPANESE_TTF}); }}
@@ -1506,8 +1505,7 @@ def export_timetable_pdf(**kwargs):
         """
 
         pdf_bytes = HTML(string=html_string, base_url=BASE_DIR).write_pdf(
-            stylesheets=[CSS(string=css_string, font_config=font_config)],
-            font_config=font_config
+            stylesheets=[CSS(string=css_string)]
         )
 
         buf = io.BytesIO(pdf_bytes)
