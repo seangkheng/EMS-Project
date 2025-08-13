@@ -1401,6 +1401,142 @@ def export_students_excel(**kwargs):
         traceback.print_exc()
         return jsonify({'message': f'An error occurred during Excel export: {e}'}), 500
 
+@app.route('/api/students/export/pdf')
+@token_required
+def export_students_pdf(**kwargs):
+    try:
+        lang = request.args.get('lang', 'km') 
+        pdf_translations = {
+            'km': { 'title': 'បញ្ជីឈ្មោះសិស្ស' },
+            'en': { 'title': 'Student List' },
+            'jp': { 'title': '学生一覧' }
+        }
+        t = pdf_translations.get(lang, pdf_translations['km'])
+        
+        conn = get_db_connection()
+        students = conn.execute("""
+            SELECT s.id, s.name_km, s.name_en, s.name_jp, s.dob, s.contact, s.address, s.photo_filename, c.name as class_name
+            FROM students s
+            LEFT JOIN enrollments e ON s.id = e.student_id
+            LEFT JOIN classes c ON e.class_id = c.id
+            GROUP BY s.id ORDER BY s.id DESC
+        """).fetchall()
+        conn.close()
+
+        table_rows_html = ""
+        for r in students:
+            img_tag = "<div class='img-placeholder'></div>"
+            if r['photo_filename']:
+                photo_path = os.path.join(app.config['UPLOAD_FOLDER'], r['photo_filename'])
+                data_uri = image_to_base64_data_uri(photo_path)
+                if data_uri:
+                    img_tag = f"<img src='{data_uri}'>"
+            
+            name_html = f"""
+                <div class='name-km'>{r['name_km'] or ''}</div>
+                <div class='name-en'>{r['name_en'] or ''}</div>
+                <div class='name-jp'>{r['name_jp'] or ''}</div>
+            """
+
+            table_rows_html += f"""
+                <tr>
+                    <td>{img_tag}</td>
+                    <td>{name_html}</td>
+                    <td>{r['class_name'] or 'N/A'}</td>
+                    <td>{r['address'] or ''}</td>
+                    <td>{r['contact'] or ''}</td>
+                </tr>
+            """
+        
+        logo_path = os.path.join(BASE_DIR, 'static', 'images', 'logo.png')
+        logo_data_uri = image_to_base64_data_uri(logo_path)
+        logo_tag = f"<img src='{logo_data_uri}' class='header-logo'>" if logo_data_uri else ""
+
+        html_string = """
+        <!DOCTYPE html>
+        <html lang="{lang}">
+        <head>
+            <meta charset="utf-8">
+            <title>{title}</title>
+        </head>
+        <body>
+            <div class="header">
+                {logo_tag}
+                <div class="header-text">
+                    <h1>YATAI School</h1>
+                    <p>{title}</p>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:20%">រូបថត / Photo / 写真</th>
+                        <th style="width:30%">ឈ្មោះ / Name / 氏名</th>
+                        <th style="width:15%">ថ្នាក់ / Class / クラス</th>
+                        <th style="width:20%">អាសយដ្ឋាន / Address / 住所</th>
+                        <th style="width:15%">ទំនាក់ទំនង / Contact / 連絡先</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {table_rows_html}
+                </tbody>
+            </table>
+        </body>
+        </html>
+        """.format(
+            lang=lang,
+            title=t['title'],
+            logo_tag=logo_tag,
+            table_rows_html=table_rows_html
+        )
+        
+        css_string = f"""
+        @font-face {{
+            font-family: 'KhmerApp';
+            src: url(file://{KHMER_TTF});
+        }}
+        @font-face {{
+            font-family: 'JapaneseApp';
+            src: url(file://{JAPANESE_TTF});
+        }}
+        * {{ font-family: 'KhmerApp', 'JapaneseApp', sans-serif; }}
+        body {{ font-size: 10pt; }}
+        .header {{
+            display: flex; align-items: center; gap: 20px;
+            padding-bottom: 15px; margin-bottom: 15px; border-bottom: 2px solid #000;
+        }}
+        .header-logo {{ width: 60px; height: 60px; }}
+        .header-text h1 {{ margin: 0; font-size: 20pt; }}
+        .header-text p {{ margin: 0; font-size: 12pt; color: #555; }}
+        table {{ width: 100%; border-collapse: collapse; }}
+        th, td {{
+            border: 1px solid #ccc; padding: 8px;
+            vertical-align: middle; text-align: left;
+        }}
+        th {{ background-color: #f2f2f2; font-weight: bold; text-align: center; }}
+        td img, .img-placeholder {{
+            width: 120px; height: 120px; 
+            object-fit: cover; border-radius: 8px;
+            display: block; margin: auto;
+        }}
+        .img-placeholder {{ background-color: #eee; }}
+        .name-km {{ font-weight: bold; font-size: 1.1em; }}
+        .name-en, .name-jp {{ font-size: 1em; color: #333; }}
+        """
+        
+        pdf_bytes = HTML(string=html_string, base_url=BASE_DIR).write_pdf(
+            stylesheets=[CSS(string=css_string)]
+        )
+        
+        buf = io.BytesIO(pdf_bytes)
+        buf.seek(0)
+        return send_file(buf, download_name="student_list_report.pdf", as_attachment=True)
+
+    except Exception as e:
+        print(f"---!!!! PDF EXPORT ERROR !!!! --->: {e}")
+        traceback.print_exc()
+        return jsonify({'message': f'An error occurred during PDF export: {e}'}), 500
+
 @app.route('/api/timetables/export/pdf')
 @token_required
 def export_timetable_pdf(**kwargs):
