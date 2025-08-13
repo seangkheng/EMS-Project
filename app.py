@@ -1,4 +1,4 @@
-# app.py (Final Corrected Version with All Features & PDF Image Fix for Render)
+# app.py (Final Corrected Version with Direct Font Embedding in CSS)
 
 import os
 import time
@@ -8,8 +8,8 @@ import pandas as pd
 import calendar
 import traceback
 import math
-import base64 # Import for image encoding
-import mimetypes # Import for getting image type
+import base64 
+import mimetypes 
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
@@ -17,7 +17,7 @@ import jwt
 from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 from functools import wraps
-from weasyprint import HTML, CSS
+from weasyprint import HTML, CSS, FontConfiguration # បន្ថែម FontConfiguration
 from dotenv import load_dotenv
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
@@ -44,15 +44,9 @@ JAPANESE_TTF = os.path.join(FONT_FOLDER, 'NotoSansJP-Regular.ttf')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Create necessary directories if they don't exist
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
     print(f"--- INFO: Created uploads directory at {UPLOAD_FOLDER} ---")
-
-if not os.path.exists(FONT_FOLDER):
-    os.makedirs(FONT_FOLDER)
-    print(f"--- WARNING: Fonts directory not found at {FONT_FOLDER}. PDF exports might fail. ---")
-
 
 # --- Database Helper Function ---
 def get_db_connection():
@@ -63,7 +57,6 @@ def get_db_connection():
 # --- INITIAL DATABASE AND ADMIN SETUP ---
 def setup_database_and_admin():
     print("--- INFO: Checking database and setting up default admin... ---")
-    print(f"--- INFO: Database file path: {DATABASE_FILE} ---")
     conn = get_db_connection()
     cursor = conn.cursor()
     sql_commands = [
@@ -172,12 +165,7 @@ def setup_database_and_admin():
     conn.close()
     print(f"--- INFO: Setup complete. You can log in with Username: admin, Password: {default_password} ---")
 
-# --- START: ការ​កែប្រែ​សំខាន់ ---
-# ហៅ​មុខងារ​រៀបចំ​មូលដ្ឋាន​ទិន្នន័យ​នៅ​ពេល​កម្មវិធី​ចាប់ផ្ដើម
-# នេះ​នឹង​ធានា​ថា​តារាង​ទិន្នន័យ​ត្រូវ​បាន​បង្កើត​នៅ​លើ Render
 setup_database_and_admin()
-# --- END: ការ​កែប្រែ​សំខាន់ ---
-
 
 def get_token_data():
     token = None
@@ -207,12 +195,26 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
+def image_to_base64_data_uri(filepath):
+    """Reads an image file and converts it to a base64 data URI."""
+    if not filepath or not os.path.exists(filepath):
+        return None
+    try:
+        mime_type, _ = mimetypes.guess_type(filepath)
+        if not mime_type or not mime_type.startswith('image'):
+            return None
+        with open(filepath, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+        return f"data:{mime_type};base64,{encoded_string}"
+    except Exception as e:
+        print(f"Error converting image to base64: {e}")
+        return None
+
 # --- Main Route to Serve Frontend ---
 @app.route('/')
 def serve_index():
     return send_from_directory('.', 'index.html')
 
-# --- Route to serve uploaded files from the persistent disk ---
 @app.route('/uploads/<path:filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
@@ -247,7 +249,6 @@ def login():
         print(f"Login Error: {e}")
         return jsonify({'error': 'An internal server error occurred'}), 500
 
-# --- Dashboard API ---
 @app.route('/api/dashboard/stats', methods=['GET'])
 @token_required
 def get_dashboard_stats(**kwargs):
@@ -1339,23 +1340,6 @@ def get_student_report_card(student_id, **kwargs):
 
 
 # --- Export API Routes ---
-
-# NEW HELPER FUNCTION FOR PDF IMAGE EMBEDDING
-def image_to_base64_data_uri(filepath):
-    """Reads an image file and converts it to a base64 data URI."""
-    if not filepath or not os.path.exists(filepath):
-        return None
-    try:
-        mime_type, _ = mimetypes.guess_type(filepath)
-        if not mime_type or not mime_type.startswith('image'):
-            return None
-        with open(filepath, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-        return f"data:{mime_type};base64,{encoded_string}"
-    except Exception as e:
-        print(f"Error converting image to base64: {e}")
-        return None
-
 @app.route('/api/students/export/excel')
 @token_required
 def export_students_excel(**kwargs):
@@ -1417,147 +1401,6 @@ def export_students_excel(**kwargs):
         traceback.print_exc()
         return jsonify({'message': f'An error occurred during Excel export: {e}'}), 500
 
-
-@app.route('/api/students/export/pdf')
-@token_required
-def export_students_pdf(**kwargs):
-    try:
-        lang = request.args.get('lang', 'km') 
-
-        pdf_translations = {
-            'km': { 'title': 'បញ្ជីឈ្មោះសិស្ស' },
-            'en': { 'title': 'Student List' },
-            'jp': { 'title': '学生一覧' }
-        }
-        
-        t = pdf_translations.get(lang, pdf_translations['km'])
-
-        conn = get_db_connection()
-        students = conn.execute("""
-            SELECT s.id, s.name_km, s.name_en, s.name_jp, s.dob, s.contact, s.address, s.photo_filename, c.name as class_name
-            FROM students s
-            LEFT JOIN enrollments e ON s.id = e.student_id
-            LEFT JOIN classes c ON e.class_id = c.id
-            GROUP BY s.id ORDER BY s.id DESC
-        """).fetchall()
-        conn.close()
-
-        table_rows_html = ""
-        for r in students:
-            # --- START: PDF IMAGE FIX ---
-            img_tag = "<div class='img-placeholder'></div>"
-            if r['photo_filename']:
-                photo_path = os.path.join(app.config['UPLOAD_FOLDER'], r['photo_filename'])
-                data_uri = image_to_base64_data_uri(photo_path)
-                if data_uri:
-                    img_tag = f"<img src='{data_uri}'>"
-            # --- END: PDF IMAGE FIX ---
-            
-            name_html = f"""
-                <div class='name-km'>{r['name_km'] or ''}</div>
-                <div class='name-en'>{r['name_en'] or ''}</div>
-                <div class='name-jp'>{r['name_jp'] or ''}</div>
-            """
-
-            table_rows_html += f"""
-                <tr>
-                    <td>{img_tag}</td>
-                    <td>{name_html}</td>
-                    <td>{r['class_name'] or 'N/A'}</td>
-                    <td>{r['address'] or ''}</td>
-                    <td>{r['contact'] or ''}</td>
-                </tr>
-            """
-        
-        # --- START: PDF LOGO FIX ---
-        logo_path = os.path.join(BASE_DIR, 'static', 'images', 'logo.png')
-        logo_data_uri = image_to_base64_data_uri(logo_path)
-        logo_tag = f"<img src='{logo_data_uri}' class='header-logo'>" if logo_data_uri else ""
-        # --- END: PDF LOGO FIX ---
-
-        css_string = """
-        @font-face {{
-            font-family: 'KhmerApp';
-            src: url('file://{KHMER_TTF}') format('truetype');
-        }}
-        @font-face {{
-            font-family: 'JapaneseApp';
-            src: url('file://{JAPANESE_TTF}') format('truetype');
-        }}
-        * {{ font-family: 'KhmerApp', 'JapaneseApp', sans-serif; }}
-        body {{ font-size: 10pt; }}
-        .header {{
-            display: flex; align-items: center; gap: 20px;
-            padding-bottom: 15px; margin-bottom: 15px; border-bottom: 2px solid #000;
-        }}
-        .header-logo {{ width: 60px; height: 60px; }}
-        .header-text h1 {{ margin: 0; font-size: 20pt; }}
-        .header-text p {{ margin: 0; font-size: 12pt; color: #555; }}
-        table {{ width: 100%; border-collapse: collapse; }}
-        th, td {{
-            border: 1px solid #ccc; padding: 8px;
-            vertical-align: middle; text-align: left;
-        }}
-        th {{ background-color: #f2f2f2; font-weight: bold; text-align: center; }}
-        td img, .img-placeholder {{
-            width: 120px; height: 120px; 
-            object-fit: cover; border-radius: 8px;
-            display: block; margin: auto;
-        }}
-        .img-placeholder {{ background-color: #eee; }}
-        .name-km {{ font-weight: bold; font-size: 1.1em; }}
-        .name-en, .name-jp {{ font-size: 1em; color: #333; }}
-        """.format(KHMER_TTF=KHMER_TTF, JAPANESE_TTF=JAPANESE_TTF)
-
-        html_string = """
-        <!DOCTYPE html>
-        <html lang="{lang}">
-        <head>
-            <meta charset="utf-8">
-            <title>{title}</title>
-        </head>
-        <body>
-            <div class="header">
-                {logo_tag}
-                <div class="header-text">
-                    <h1>YATAI School</h1>
-                    <p>{title}</p>
-                </div>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:20%">រូបថត / Photo / 写真</th>
-                        <th style="width:30%">ឈ្មោះ / Name / 氏名</th>
-                        <th style="width:15%">ថ្នាក់ / Class / クラス</th>
-                        <th style="width:20%">អាសយដ្ឋាន / Address / 住所</th>
-                        <th style="width:15%">ទំនាក់ទំនង / Contact / 連絡先</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {table_rows_html}
-                </tbody>
-            </table>
-        </body>
-        </html>
-        """.format(
-            lang=lang,
-            title=t['title'],
-            logo_tag=logo_tag,
-            table_rows_html=table_rows_html
-        )
-
-        pdf_bytes = HTML(string=html_string, base_url=BASE_DIR).write_pdf(stylesheets=[CSS(string=css_string)])
-        
-        buf = io.BytesIO(pdf_bytes)
-        buf.seek(0)
-        return send_file(buf, download_name="student_list_report.pdf", as_attachment=True)
-
-    except Exception as e:
-        print(f"---!!!! PDF EXPORT ERROR !!!! --->: {e}")
-        traceback.print_exc()
-        return jsonify({'message': f'An error occurred during PDF export: {e}'}), 500
-
 # --- Timetable API Routes ---
 @app.route('/api/timetables', methods=['POST'])
 @admin_required
@@ -1612,121 +1455,6 @@ def delete_timetable_entry(entry_id, **kwargs):
     conn.close()
     return jsonify({'message': 'Timetable entry deleted successfully!'})
 
-@app.route('/api/timetables/export/pdf')
-@token_required
-def export_timetable_pdf(**kwargs):
-    class_id = request.args.get('class_id')
-    lang = request.args.get('lang', 'km')
-    if not class_id:
-        return jsonify({'message': 'Class ID is required.'}), 400
-
-    try:
-        conn = get_db_connection()
-        class_info = conn.execute("SELECT name FROM classes WHERE id = ?", (class_id,)).fetchone()
-        schedule = conn.execute("""
-            SELECT tt.*, t.name as teacher_name, s.name as subject_name
-            FROM timetables tt
-            JOIN teachers t ON tt.teacher_id = t.id
-            JOIN subjects s ON tt.subject_id = s.id
-            WHERE tt.class_id = ?
-            ORDER BY tt.day_of_week, tt.start_time
-        """, (class_id,)).fetchall()
-        conn.close()
-
-        if not class_info:
-            return jsonify({'message': 'Class not found.'}), 404
-
-        translations = {
-            'km': {'title': 'កាលវិភាគសិក្សា', 'time': 'ម៉ោង', 'days': ['ចន្ទ', 'អង្គារ', 'ពុធ', 'ព្រហស្បតិ៍', 'សុក្រ', 'សៅរ៍', 'អាទិត្យ']},
-            'en': {'title': 'Class Timetable', 'time': 'Time', 'days': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']},
-            'jp': {'title': 'クラスの時間割', 'time': '時間', 'days': ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日']}
-        }
-        t = translations.get(lang, translations['km'])
-        
-        time_slots = [
-            '07:00', '08:00', '09:00', '10:00', '11:00',
-            '13:00', '14:00', '15:00', '16:00'
-        ]
-
-        # Build HTML grid
-        table_header = f"<th>{t['time']}</th>"
-        for day in t['days']:
-            table_header += f"<th>{day}</th>"
-
-        table_body = ""
-        for time_slot in time_slots:
-            table_body += f"<tr><td class='time-label'>{time_slot}</td>"
-            for day_index in range(1, 8):
-                entry_html = ""
-                for entry in schedule:
-                    if entry['day_of_week'] == day_index and entry['start_time'].startswith(time_slot):
-                        entry_html += f"""
-                            <div class='schedule-entry-pdf'>
-                                <strong>{entry['subject_name']}</strong>
-                                <p>{entry['teacher_name']}</p>
-                            </div>
-                        """
-                table_body += f"<td>{entry_html}</td>"
-            table_body += "</tr>"
-
-        logo_path = os.path.join(BASE_DIR, 'static', 'images', 'logo.png')
-        logo_data_uri = image_to_base64_data_uri(logo_path)
-        logo_tag = f"<img src='{logo_data_uri}' class='header-logo'>" if logo_data_uri else ""
-        
-        css_string = """
-        @font-face {{ font-family: 'KhmerApp'; src: url('file://{KHMER_TTF}'); }}
-        @font-face {{ font-family: 'JapaneseApp'; src: url('file://{JAPANESE_TTF}'); }}
-        * {{ font-family: 'KhmerApp', 'JapaneseApp', sans-serif; }}
-        body {{ font-size: 9pt; }}
-        .header {{ display: flex; align-items: center; gap: 20px; padding-bottom: 15px; margin-bottom: 15px; border-bottom: 2px solid #000; }}
-        .header-logo {{ width: 60px; }}
-        .header-text h1, .header-text p {{ margin: 0; }}
-        table {{ width: 100%; border-collapse: collapse; table-layout: fixed; }}
-        th, td {{ border: 1px solid #ccc; padding: 5px; vertical-align: top; text-align: center; height: 60px; }}
-        th {{ background-color: #f2f2f2; font-weight: bold; }}
-        .time-label {{ font-weight: bold; vertical-align: middle; }}
-        .schedule-entry-pdf {{ background: #eef2ff; border-left: 3px solid #4f46e5; border-radius: 4px; padding: 4px; margin-bottom: 3px; text-align: left; font-size: 8pt; }}
-        .schedule-entry-pdf strong {{ display: block; }}
-        .schedule-entry-pdf p {{ margin: 2px 0 0; color: #555; }}
-        """.format(KHMER_TTF=KHMER_TTF, JAPANESE_TTF=JAPANESE_TTF)
-
-        html_string = """
-        <!DOCTYPE html>
-        <html>
-        <head><title>Timetable</title></head>
-        <body>
-            <div class="header">
-                {logo_tag}
-                <div class="header-text">
-                    <h1>{title}</h1>
-                    <p>{class_name}</p>
-                </div>
-            </div>
-            <table>
-                <thead><tr>{table_header}</tr></thead>
-                <tbody>{table_body}</tbody>
-            </table>
-        </body>
-        </html>
-        """.format(
-            logo_tag=logo_tag,
-            title=t['title'],
-            class_name=class_info['name'],
-            table_header=table_header,
-            table_body=table_body
-        )
-
-        pdf_bytes = HTML(string=html_string, base_url=BASE_DIR).write_pdf(stylesheets=[CSS(string=css_string)])
-        buf = io.BytesIO(pdf_bytes)
-        buf.seek(0)
-        return send_file(buf, download_name=f"timetable_{class_info['name']}.pdf", as_attachment=True)
-
-    except Exception as e:
-        print(f"---!!!! TIMETABLE PDF EXPORT ERROR !!!! --->: {e}")
-        traceback.print_exc()
-        return jsonify({'message': f'An error occurred during PDF export: {e}'}), 500
-
-
 # --- Announcement API Routes ---
 @app.route('/api/announcements', methods=['GET'])
 @token_required
@@ -1777,7 +1505,4 @@ def delete_announcement(announcement_id, **kwargs):
 
 # --- Run Application ---
 if __name__ == '__main__':
-    # The setup function is called globally, so it's not strictly needed here for local dev,
-    # but keeping it doesn't cause any harm.
-    setup_database_and_admin()
     app.run(host='0.0.0.0', port=3000, debug=False)
