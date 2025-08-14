@@ -1490,58 +1490,39 @@ def export_students_pdf(**kwargs):
             table_rows_html=table_rows_html
         )
         
-        css_string = f\"\"\"
-@font-face {{
-  font-family: 'KhmerApp';
-  src:
-    local('Noto Sans Khmer'),
-    local('Khmer OS'), local('KhmerOS'), local('Khmer OS Battambang'),
-    url('file://{{KHMER_TTF}}') format('truetype');
-}}
-@font-face {{
-  font-family: 'JapaneseApp';
-  src:
-    local('Noto Sans CJK JP'), local('Noto Sans JP'), local('NotoSansJP-Regular'),
-    url('file://{{JAPANESE_TTF}}') format('truetype');
-}}
-* {{
-  font-family: 'KhmerApp','JapaneseApp',
-               'Noto Sans','Noto Sans CJK JP','Khmer OS',
-               system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
-}}
-:lang(km) {{ font-family: 'KhmerApp', sans-serif; }}
-:lang(ja) {{ font-family: 'JapaneseApp', sans-serif; }}
-
-body {{ font-size: 10pt; }}
-.header {{
-  display: flex; align-items: center; gap: 20px;
-  padding-bottom: 15px; margin-bottom: 15px; border-bottom: 2px solid #000;
-}}
-.header-logo {{ width: 60px; height: 60px; }}
-.header-text h1 {{ margin: 0; font-size: 20pt; }}
-.header-text p {{ margin: 0; font-size: 12pt; color: #555; }}
-
-table {{ width: 100%; border-collapse: collapse; }}
-th, td {{
-  border: 1px solid #ccc; padding: 8px;
-  vertical-align: middle; text-align: left;
-}}
-th {{ background-color: #f2f2f2; font-weight: bold; text-align: center; }}
-
-/* Thumbnail size for student images */
-td img, .img-placeholder {{
-  width: 90px;
-  height: 90px;
-  object-fit: cover; /* uniform square thumbnails */
-  border-radius: 8px;
-  display: block;
-  margin: auto;
-}}
-.img-placeholder {{ background-color: #eee; }}
-
-.name-km {{ font-weight: bold; font-size: 1.1em; }}
-.name-en, .name-jp {{ font-size: 1em; color: #333; }}
-\"\"\"
+        css_string = f"""
+        @font-face {{
+            font-family: 'KhmerApp';
+            src: url(file://{KHMER_TTF});
+        }}
+        @font-face {{
+            font-family: 'JapaneseApp';
+            src: url(file://{JAPANESE_TTF});
+        }}
+        * {{ font-family: 'KhmerApp', 'JapaneseApp', sans-serif; }}
+        body {{ font-size: 10pt; }}
+        .header {{
+            display: flex; align-items: center; gap: 20px;
+            padding-bottom: 15px; margin-bottom: 15px; border-bottom: 2px solid #000;
+        }}
+        .header-logo {{ width: 60px; height: 60px; }}
+        .header-text h1 {{ margin: 0; font-size: 20pt; }}
+        .header-text p {{ margin: 0; font-size: 12pt; color: #555; }}
+        table {{ width: 100%; border-collapse: collapse; }}
+        th, td {{
+            border: 1px solid #ccc; padding: 8px;
+            vertical-align: middle; text-align: left;
+        }}
+        th {{ background-color: #f2f2f2; font-weight: bold; text-align: center; }}
+        td img, .img-placeholder {{
+            width: 120px; height: 120px; 
+            object-fit: cover; border-radius: 8px;
+            display: block; margin: auto;
+        }}
+        .img-placeholder {{ background-color: #eee; }}
+        .name-km {{ font-weight: bold; font-size: 1.1em; }}
+        .name-en, .name-jp {{ font-size: 1em; color: #333; }}
+        """
         
         pdf_bytes = HTML(string=html_string, base_url=BASE_DIR).write_pdf(
             stylesheets=[CSS(string=css_string)]
@@ -1642,51 +1623,22 @@ def export_timetable_pdf(**kwargs):
             table_body=table_body
         )
 
-        css_string = f\"\"\"
-@font-face {{
-  font-family: 'KhmerApp';
-  src:
-    local('Noto Sans Khmer'),
-    local('Khmer OS'), local('KhmerOS'), local('Khmer OS Battambang'),
-    url('file://{{KHMER_TTF}}') format('truetype');
-}}
-@font-face {{
-  font-family: 'JapaneseApp';
-  src:
-    local('Noto Sans CJK JP'), local('Noto Sans JP'), local('NotoSansJP-Regular'),
-    url('file://{{JAPANESE_TTF}}') format('truetype');
-}}
-* {{
-  font-family: 'KhmerApp','JapaneseApp',
-               'Noto Sans','Noto Sans CJK JP','Khmer OS',
-               system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
-}}
-:lang(km) {{ font-family: 'KhmerApp', sans-serif; }}
-:lang(ja) {{ font-family: 'JapaneseApp', sans-serif; }}
-
-body {{ font-size: 9pt; }}
-.header {{
-  display: flex; align-items: center; gap: 20px;
-  padding-bottom: 15px; margin-bottom: 15px; border-bottom: 2px solid #000;
-}}
-.header-logo {{ width: 60px; }}
-.header-text h1, .header-text p {{ margin: 0; }}
-
-table {{
-  width: 100%; border-collapse: collapse; table-layout: fixed;
-}}
-th, td {{
-  border: 1px solid #ccc; padding: 5px; vertical-align: top; text-align: center; height: 60px;
-}}
-th {{ background-color: #f2f2f2; font-weight: bold; }}
-.time-label {{ font-weight: bold; vertical-align: middle; }}
-.schedule-entry-pdf {{
-  background: #eef2ff; border-left: 3px solid #4f46e5; border-radius: 4px;
-  padding: 4px; margin-bottom: 3px; text-align: left; font-size: 8pt;
-}}
-.schedule-entry-pdf strong {{ display: block; }}
-.schedule-entry-pdf p {{ margin: 2px 0 0; color: #555; }}
-\"\"\"
+        css_string = f"""
+        @font-face {{ font-family: 'KhmerApp'; src: url(file://{KHMER_TTF}); }}
+        @font-face {{ font-family: 'JapaneseApp'; src: url(file://{JAPANESE_TTF}); }}
+        * {{ font-family: 'KhmerApp', 'JapaneseApp', sans-serif; }}
+        body {{ font-size: 9pt; }}
+        .header {{ display: flex; align-items: center; gap: 20px; padding-bottom: 15px; margin-bottom: 15px; border-bottom: 2px solid #000; }}
+        .header-logo {{ width: 60px; }}
+        .header-text h1, .header-text p {{ margin: 0; }}
+        table {{ width: 100%; border-collapse: collapse; table-layout: fixed; }}
+        th, td {{ border: 1px solid #ccc; padding: 5px; vertical-align: top; text-align: center; height: 60px; }}
+        th {{ background-color: #f2f2f2; font-weight: bold; }}
+        .time-label {{ font-weight: bold; vertical-align: middle; }}
+        .schedule-entry-pdf {{ background: #eef2ff; border-left: 3px solid #4f46e5; border-radius: 4px; padding: 4px; margin-bottom: 3px; text-align: left; font-size: 8pt; }}
+        .schedule-entry-pdf strong {{ display: block; }}
+        .schedule-entry-pdf p {{ margin: 2px 0 0; color: #555; }}
+        """
 
         pdf_bytes = HTML(string=html_string, base_url=BASE_DIR).write_pdf(
             stylesheets=[CSS(string=css_string)]
